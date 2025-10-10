@@ -1,101 +1,112 @@
-import { Resend } from 'resend';
+// api/contact.js
+const { Resend } = require('resend');
 
-const { RESEND_API_KEY, TO_EMAIL, FROM_EMAIL, NODE_ENV } = process.env;
-const resend = new Resend(RESEND_API_KEY || '');
-
-function esc(s) {
-  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// --- helpers ---
+function escapeHtml(s = '') {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])
+  );
 }
 
-export default async function handler(req, res) {
+async function readJsonBody(req) {
+  // Vercel suele darte req.body ya parseado si es application/json,
+  // pero por seguridad soportamos ambos caminos.
+  if (req.body && typeof req.body === 'object') return req.body;
+
+  const chunks = [];
+  for await (const ch of req) chunks.push(ch);
+  const raw = Buffer.concat(chunks).toString('utf8').trim();
+  if (!raw) return {};
+  try { return JSON.parse(raw); }
+  catch (e) { throw new Error('Invalid JSON body'); }
+}
+
+// --- handler ---
+module.exports = async (req, res) => {
   try {
-    if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+    if (req.method !== 'POST') {
+      res.statusCode = 405;
+      return res.end('Method Not Allowed');
+    }
 
-    const { name, email, message, nickname } = req.body || {};
+    const { RESEND_API_KEY, FROM_EMAIL, TO_EMAIL, NODE_ENV } = process.env;
 
-    // Honeypot anti-spam
+    // Comprobación de envs
+    if (!RESEND_API_KEY || !FROM_EMAIL || !TO_EMAIL) {
+      console.error('[contact] Missing ENV', {
+        hasKey: !!RESEND_API_KEY, hasFrom: !!FROM_EMAIL, hasTo: !!TO_EMAIL
+      });
+      res.statusCode = 500;
+      return res.end(JSON.stringify({ error: 'Server misconfigured' }));
+    }
+
+    const body = await readJsonBody(req);
+    const { name, email, message, nickname } = (body || {});
+
+    // Honeypot
     if (nickname && String(nickname).trim() !== '') {
-      return res.status(200).json({ ok: true });
+      // fingimos éxito para bots
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      return res.end(JSON.stringify({ ok: true }));
     }
 
     // Validaciones
-    if (!name || !email || !message) return res.status(400).json({ error: 'Missing fields' });
-    if (!/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ error: 'Invalid email' });
-    if (String(message).length > 5000) return res.status(400).json({ error: 'Message too long' });
-
-    // 1) Email para TI (notificación)
-    const ownerHtml = `
-      <h2>Nuevo mensaje desde syco.dev</h2>
-      <p><strong>Nombre:</strong> ${esc(name)}</p>
-      <p><strong>Email:</strong> ${esc(email)}</p>
-      <p><strong>Mensaje:</strong><br>${esc(message).replace(/\n/g, '<br/>')}</p>
-    `;
-
-    // 2) Email para ELLOS (acuse)
-    const ackHtml = `
-      <div style="font-family: Inter, Arial, sans-serif; background-color: #f9fafb; padding: 32px;">
-        <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); padding: 24px;">
-          <h2 style="font-size: 20px; color: #111827; margin-bottom: 12px;">¡Hola ${esc(name)}!</h2>
-          <p style="font-size: 15px; color: #374151; line-height: 1.6;">
-            Gracias por ponerte en contacto conmigo a través de <strong>syco.dev</strong>.<br>
-            He recibido tu mensaje y te responderé personalmente en cuanto me sea posible.
-          </p>
-          <hr style="border:none; border-top:1px solid #e5e7eb; margin: 20px 0;">
-          <p style="font-size: 14px; color: #6b7280;">Tu mensaje:</p>
-          <blockquote style="font-size: 14px; color: #374151; margin: 8px 0 20px; padding: 12px 16px; background:#f3f4f6; border-left: 3px solid #3b82f6; border-radius: 4px;">
-            ${esc(message).replace(/\n/g, '<br/>')}
-          </blockquote>
-          <p style="font-size: 15px; color: #111827; margin-bottom: 24px;">— Andreu Simonet<br><span style="color:#6b7280;">syco.dev</span></p>
-          <a href="https://syco.dev" style="display:inline-block; background:#3b82f6; color:white; padding:10px 18px; border-radius:8px; text-decoration:none; font-size:14px;">
-            Visitar mi portfolio
-          </a>
-        </div>
-        <p style="text-align:center; font-size:12px; color:#9ca3af; margin-top:24px;">
-          Este correo fue enviado automáticamente desde <strong>syco.dev</strong>
-        </p>
-      </div>
-    `;
-
-    // Enviamos ambos en paralelo
-    const [ownerRes, ackRes] = await Promise.allSettled([
-      await resend.emails.send({
-        from: FROM_EMAIL,      // p.ej. "Portfolio <contact@syco.dev>"
-        to: TO_EMAIL,          // p.ej. "contact@syco.dev" (Cloudflare lo reenvía a tu inbox)
-        subject: `Nuevo contacto: ${esc(name)}`,
-        html: ownerHtml,
-        reply_to: email        // responderás directo a quien escribió
-      }),
-      await resend.emails.send({
-        from: FROM_EMAIL,
-        to: email,
-        subject: `Hemos recibido tu mensaje — syco.dev`,
-        html: ackHtml,
-        text: `¡Hola ${name}!\n\nGracias por contactarme a través de syco.dev.\nHe recibido tu mensaje y te responderé en cuanto pueda.\n\nTu mensaje:\n${message}\n\n— Andreu Simonet\nsyco.dev`,
-        reply_to: TO_EMAIL
-      })
-    ]);
-
-    // Si el aviso a TI falla, consideramos error; si solo falla el acuse, devolvemos 200 pero avisamos
-    if (ownerRes.status === 'rejected') {
-      console.error('[contact] owner email failed:', ownerRes.reason);
-      return res.status(500).json({ error: 'Email failed (owner)' });
+    if (!name || !email || !message) {
+      res.statusCode = 400;
+      return res.end(JSON.stringify({ error: 'Missing fields' }));
     }
-    if (ackRes.status === 'rejected') {
-      console.warn('[contact] ack email failed:', ackRes.reason);
-      return res.status(200).json({ ok: true, ack: 'failed' });
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      res.statusCode = 400;
+      return res.end(JSON.stringify({ error: 'Invalid email' }));
+    }
+    if (String(message).length > 5000) {
+      res.statusCode = 400;
+      return res.end(JSON.stringify({ error: 'Message too long' }));
     }
 
-    return res.status(200).json({ ok: true });
+    const resend = new Resend(RESEND_API_KEY);
+
+    // 1) Email a TI (copia del mensaje del cliente)
+    const toYou = await resend.emails.send({
+      from: FROM_EMAIL,            // debe ser tu remitente verificado (p.e. contact@syco.dev)
+      to: TO_EMAIL,                // tu buzón personal donde quieres recibir
+      subject: `Nuevo contacto: ${name}`,
+      html: `
+        <h2>Nuevo mensaje desde el portfolio</h2>
+        <p><strong>Nombre:</strong> ${escapeHtml(name)}</p>
+        <p><strong>Email:</strong> ${escapeHtml(email)}</p>
+        <p><strong>Mensaje:</strong><br/>${escapeHtml(message).replace(/\n/g, '<br/>')}</p>
+      `,
+      replyTo: email
+    });
+
+    // 2) Auto-confirmación al cliente
+    const toClient = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: email,
+      subject: 'Hemos recibido tu mensaje ✔',
+      html: `
+        <h2>¡Gracias por contactarme!</h2>
+        <p>Hola ${escapeHtml(name)},</p>
+        <p>He recibido tu mensaje y te responderé lo antes posible.</p>
+        <hr/>
+        <p class="muted" style="color:#9ca3af">Si no fuiste tú, ignora este correo.</p>
+      `
+    });
+
+    // respuesta OK
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    return res.end(JSON.stringify({ ok: true, idYou: toYou?.id, idClient: toClient?.id }));
+
   } catch (err) {
-    console.error('[contact] email failed name:', err?.name);
-    console.error('[contact] email failed message:', err?.message);
-    console.error('[contact] email failed status:', err?.statusCode || err?.status);
-    if (err?.response?.data) console.error('[contact] response.data:', err.response.data);
-
-    const payload = NODE_ENV === 'development'
-      ? { error: 'Email failed', detail: err?.message || String(err) }
-      : { error: 'Email failed' };
-
-    return res.status(500).json(payload);
+    console.error('[contact] 500', err?.message || err, err?.response || '');
+    // Intenta exponer un mensaje legible si viene de Resend
+    let detail = null;
+    if (err && err.response && typeof err.response === 'object') {
+      try { detail = JSON.stringify(err.response); } catch { }
+    }
+    res.statusCode = 500;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.end(JSON.stringify({ error: 'Email failed', detail: err?.message || null, extra: detail }));
   }
-}
+};

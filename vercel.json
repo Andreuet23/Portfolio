@@ -5,8 +5,11 @@
     { "src": "dist/**", "use": "@vercel/static" }
   ],
   "routes": [
-    { "src": "/feed.xml", "dest": "/api/feed" },
+    { "src": "/feed.xml", "dest": "/api/feed.js" },
     { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "^/contact$", "dest": "/api/contact.js" },
+    { "src": "^/auth/request$", "dest": "/api/auth/request.js" },
+    { "src": "^/auth/verify$", "dest": "/api/auth/verify.js" },
 
     { "src": "/posts", "dest":"/api/posts.js" },
 

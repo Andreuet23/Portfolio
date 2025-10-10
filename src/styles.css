@@ -1,6 +1,347 @@
-/* You can add global styles to this file, and also import other style files */
+/* === Variables y base (antes que Tailwind) === */
+:root {
+  --safe-pad: 16px;
+  --color-brand: #ec4899;
+  /* cambia aquí tu color de marca */
+}
+
+/* Tema oscuro base */
+html,
+body {
+  background-color: #0a0a0a;
+  color: #f1f1f1;
+}
+
 @import "tailwindcss";
 
-:root {
-  --color-brand: #ec4899;
+/* ========= Layout base ========= */
+.container {
+  @apply w-full mx-auto;
+  max-width: 100%;
+  padding-left: var(--safe-pad);
+  padding-right: var(--safe-pad);
+}
+
+@media (min-width: 768px) {
+  .container {
+    max-width: 680px;
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+/* Header / banner / avatar responsivo */
+.banner {
+  @apply rounded-xl overflow-hidden bg-gradient-to-r from-fuchsia-500/25 to-sky-500/25;
+  height: 120px;
+  /* móvil */
+}
+
+@media (min-width: 768px) {
+  .banner {
+    height: 144px;
+  }
+}
+
+.avatar-lg {
+  @apply rounded-full overflow-hidden border-4 border-neutral-900 shadow-xl;
+  width: 72px;
+  height: 72px;
+  /* móvil */
+}
+
+@media (min-width: 768px) {
+  .avatar-lg {
+    width: 96px;
+    height: 96px;
+  }
+}
+
+/* Botón Follow responsivo */
+.btn-follow {
+  @apply inline-flex items-center gap-2 rounded-full text-sm font-medium text-white transition hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-white/30;
+  background: var(--color-brand);
+  padding: 8px 14px;
+  /* móvil */
+}
+
+@media (min-width: 768px) {
+  .btn-follow {
+    padding: 10px 18px;
+  }
+}
+
+/* Tabs scrollables en móvil */
+.tabs {
+  @apply mt-5 flex gap-6 border-b border-neutral-800/80 text-neutral-300 overflow-x-auto whitespace-nowrap;
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.tabs a {
+  @apply pb-3 border-b-2 border-transparent text-neutral-300 transition-colors;
+  position: relative;
+  padding-bottom: 10px;
+}
+
+.tabs a:hover {
+  @apply text-white;
+}
+
+/* subrayado animado */
+.tabs a::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  width: 0%;
+  background-color: var(--color-brand);
+  transition: width .25s ease;
+}
+
+.tabs a.router-link-active {
+  color: #fff;
+}
+
+.tabs a.router-link-active::after {
+  width: 100%;
+}
+
+/* foco accesible */
+.tabs a:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
+/* ======== Feed Card v2 (responsivo) ======== */
+.card-post {
+  @apply rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur mb-3;
+  padding: 12px;
+  /* móvil */
+  box-shadow: 0 8px 30px rgba(0, 0, 0, .15);
+}
+
+@media (min-width: 768px) {
+  .card-post {
+    padding: 14px 16px;
+  }
+}
+
+.post-header {
+  @apply flex items-start gap-3;
+}
+
+.post-avatar {
+  @apply rounded-full overflow-hidden bg-white/5 shrink-0;
+  width: 40px;
+  height: 40px;
+}
+
+@media (min-width: 768px) {
+  .post-avatar {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+.post-name {
+  @apply font-semibold leading-tight;
+  font-size: 15px;
+}
+
+.post-meta {
+  @apply text-xs text-neutral-400;
+}
+
+/* contenido del post */
+.post-body .prose {
+  @apply mt-1 leading-relaxed text-neutral-200;
+  font-size: 15px;
+}
+
+.post-body .prose p {
+  @apply my-2;
+}
+
+.post-body .prose a {
+  @apply underline decoration-white/30 hover:decoration-white;
+}
+
+.post-body .prose code,
+.post-body .prose pre {
+  @apply bg-black/40 rounded px-1 py-0.5;
+}
+
+/* imágenes incrustadas */
+.post-body .prose img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 360px;
+  object-fit: cover;
+  @apply rounded-xl border border-white/10 mt-3;
+}
+
+@media (min-width: 768px) {
+  .post-body .prose img {
+    max-height: 420px;
+  }
+}
+
+/* Galería adicional */
+.post-gallery {
+  @apply mt-3 grid gap-2;
+}
+
+.post-gallery img {
+  @apply rounded-xl border border-white/10 w-full h-full object-cover;
+  max-height: 300px;
+}
+
+@media (min-width: 768px) {
+  .post-gallery img {
+    max-height: 360px;
+  }
+}
+
+.g-1 {
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+.g-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.g-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* Tags + acciones */
+.post-tags {
+  @apply mt-2 flex flex-wrap gap-1.5;
+}
+
+.post-tag {
+  @apply px-2 py-0.5 rounded-lg text-[11px] bg-white/5 border border-white/10 text-neutral-300;
+}
+
+.post-actions {
+  @apply mt-3 pt-3 border-t border-white/10 flex items-center gap-4 text-neutral-400;
+}
+
+.post-act {
+  @apply inline-flex items-center gap-1.5 hover:text-white transition text-[13px];
+}
+
+.post-open {
+  @apply ml-auto text-[13px] hover:underline;
+  color: var(--color-brand);
+}
+
+.dot {
+  @apply w-1 h-1 rounded-full bg-neutral-500 inline-block mx-1;
+  transform: translateY(-1px);
+}
+
+/* ======== Utilidades globales / Formularios ======== */
+.grid-2 {
+  @apply grid gap-4;
+}
+
+@media (min-width: 768px) {
+  .grid-2 {
+    @apply md:grid-cols-2;
+  }
+}
+
+/* Cards, inputs y botones compartidos (Contact/Admin/etc.) */
+.card {
+  @apply rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur;
+}
+
+.title {
+  @apply text-2xl font-bold;
+}
+
+.muted {
+  @apply text-neutral-400;
+}
+
+.input {
+  @apply w-full rounded-xl bg-black/30 border border-white/10 px-3 py-2 outline-none focus:ring-2;
+}
+
+.ta {
+  @apply min-h-[140px];
+}
+
+.btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition;
+}
+
+.btn-ghost {
+  @apply hover:bg-white/5;
+}
+
+.btn-brand {
+  color: #fff;
+  background: var(--color-brand);
+}
+
+.btn-brand:hover {
+  filter: brightness(1.05);
+}
+
+/* responsive: móvil full-width en inputs/botones; sm+ auto */
+@media (max-width: 639px) {
+
+  .btn,
+  .input {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+}
+
+/* honeypot oculto */
+.hp-wrap {
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+  height: 0;
+  width: 0;
+  overflow: hidden;
+}
+
+/* check éxito (Contact) */
+.check-wrap {
+  @apply flex items-center justify-center;
+}
+
+.check {
+  width: 64px;
+  height: 64px;
+  border-radius: 9999px;
+  border: 3px solid rgba(255, 255, 255, .2);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
+  animation: contact-pop .45s ease;
+  color: var(--color-brand);
+}
+
+@keyframes contact-pop {
+  0% {
+    transform: scale(.8);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }

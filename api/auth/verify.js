@@ -2,63 +2,58 @@
 import { kv } from '@vercel/kv';
 import crypto from 'crypto';
 
-const OTP_TTL = 60 * 15;     // 15 min (must match)
-const APIKEY_TTL = 60 * 60 * 24; // 24h
-
-function otpKey(code) { return `otp:${code}`; }
-function apiKeyKey(key) { return `apikey:${key}`; }
-function adminListKey() { return 'admin:keys'; } // list of active apikeys (optional)
-
-function genApiKey() {
-  return crypto.randomBytes(32).toString('hex'); // 64 chars
+function kvReady() {
+  return !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
 }
 
-function safeEqual(a, b) {
-  try {
-    const A = Buffer.from(String(a));
-    const B = Buffer.from(String(b));
-    if (A.length !== B.length) {
-      crypto.timingSafeEqual(A, Buffer.alloc(A.length));
-      return false;
-    }
-    return crypto.timingSafeEqual(A, B);
-  } catch {
-    return false;
-  }
+const SESSION_TTL_SECONDS = 24 * 60 * 60; // 24h
+
+async function readJsonBody(req) {
+  if (req.body && typeof req.body === 'object') return req.body;
+  const chunks = [];
+  for await (const ch of req) chunks.push(ch);
+  const raw = Buffer.concat(chunks).toString('utf8').trim();
+  if (!raw) return {};
+  return JSON.parse(raw);
+}
+function genToken() {
+  return 'ak_' + crypto.randomBytes(24).toString('hex');
 }
 
 export default async function handler(req, res) {
   try {
-    if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+    if (req.method !== 'POST') {
+      res.setHeader('Allow', 'POST');
+      return res.status(405).send('Method Not Allowed');
+    }
 
-    const { code } = req.body || {};
-    if (!code) return res.status(400).json({ error: 'Missing code' });
+    if (!kvReady() || !process.env.ADMIN_EMAIL) {
+      return res.status(500).json({ error: 'Server misconfigured' });
+    }
 
-    const key = otpKey(code);
-    const raw = await kv.get(key);
-    if (!raw) return res.status(400).json({ error: 'Invalid or expired code' });
+    const body = await readJsonBody(req).catch(() => ({}));
+    const code = String(body?.code || '').trim();
 
-    // parse and ensure not used
-    const obj = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    if (obj.used) return res.status(400).json({ error: 'Code already used' });
+    if (!/^\d{6}$/.test(code)) {
+      return res.status(400).json({ error: 'Invalid code' });
+    }
 
-    // mark used (atomic-ish)
-    await kv.set(key, JSON.stringify({ ...obj, used: true }), { ex: 60 }); // short keep for audit
+    const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+    const stored = await kv.get(`auth:code:${ADMIN_EMAIL}`);
 
-    // generate API key
-    const apikey = genApiKey();
-    const apikeyKey = apiKeyKey(apikey);
+    if (!stored || String(stored) !== code) {
+      return res.status(401).json({ error: 'Código inválido o caducado' });
+    }
 
-    // store apikey meta
-    await kv.set(apikeyKey, JSON.stringify({ createdAt: new Date().toISOString() }), { ex: APIKEY_TTL });
-    // optional: keep index of keys
-    await kv.lpush(adminListKey(), apikey);
-    await kv.expire(adminListKey(), APIKEY_TTL);
+    const apiKey = genToken();
+    await Promise.all([
+      kv.set(`auth:session:${apiKey}`, ADMIN_EMAIL, { ex: SESSION_TTL_SECONDS }),
+      kv.del(`auth:code:${ADMIN_EMAIL}`)
+    ]);
 
-    // return apikey to client
-    return res.status(200).json({ ok: true, apiKey: apikey, expiresIn: APIKEY_TTL });
+    return res.status(200).json({ ok: true, apiKey, expiresIn: SESSION_TTL_SECONDS });
   } catch (err) {
-    console.error('[auth:verify] error', err);
-    return res.status(500).json({ error: 'Server error' });
+    console.error('[auth/verify] 500', err);
+    return res.status(500).json({ error: 'Verify failed' });
   }
 }

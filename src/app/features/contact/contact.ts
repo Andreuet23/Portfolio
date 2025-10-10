@@ -1,110 +1,143 @@
+// src/app/pages/contact/contact-page.ts
 import { Component, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NgIf } from '@angular/common';
+import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 
 @Component({
-  selector: 'app-contact',
+  standalone: true,
+  selector: 'app-contact-page',
   imports: [ReactiveFormsModule, NgIf],
-  styles: [`
-      /* Animación del check dibujándose */
-      .checkmark {
-        stroke-dasharray: 48;
-        stroke-dashoffset: 48;
-        animation: draw 800ms ease-out forwards 200ms;
-      }
-      @keyframes draw {
-        to { stroke-dashoffset: 0; }
-      }
-      /* Pop-in del círculo */
-      .scale-in {
-        animation: scaleIn 380ms cubic-bezier(.2,.8,.2,1) forwards;
-        transform: scale(.6);
-        opacity: 0;
-      }
-      @keyframes scaleIn {
-        to { transform: scale(1); opacity: 1; }
-      }
-    `],
   template: `
-    <section class="max-w-xl mx-auto p-4">
-      <h2 class="text-2xl font-bold mb-4">Contacto</h2>
+  <section class="space-y-6">
+    <h2 class="title">Contacto</h2>
+    <p class="muted">¿Tienes una propuesta o colaboración? Escríbeme y te contestaré cuanto antes.</p>
 
-      <form *ngIf="!sent()" [formGroup]="form" (ngSubmit)="submit()" class="space-y-3">
-        <!-- Honeypot anti-spam -->
-         <input type="text" formControlName="nickname" class="hidden" tabindex="-1" autocomplete="off" />
-
-         <input class="w-full bg-neutral-900 rounded p-2" placeholder="Tu nombre" formControlName="name" />
-         <input class="w-full bg-neutral-900 rounded p-2" placeholder="Tu email" type="email" formControlName="email" />
-         <textarea class="w-full bg-neutral-900 rounded p-2" placeholder="¿En qué puedo ayudarte?" rows='5' formControlName="message"></textarea>
-
-         <button class="bg-[var(--color-brand)] px-4 py-2 rounded disabled:opacity-50" [disabled]="form.invalid || loading()">
-          {{ loading() ? 'Enviando...': 'Enviar' }}
-         </button>
-      </form>
-
-      <p *ngIf="error()" class="text-red-400">Hubo un problema. Inténtalo más tarde.</p>
-
-    <!-- CONFIRMACIÓN -->
-     <div *ngIf="sent()" class="mt-6 rounded-xl border border-neutral-800 bg-neutral-900/60 p-6 text-center">
-      <div class="mx-auto mb-4 flex items-center justify-center">
-      <!-- Círculo + check animado (SVG) -->
-       <svg class="scale-in" width="84" height="84" viewBox="0 0 84 84" fill="none" aria-hidden="true">
-        <circle cx="42" cy="42" r="36"
-          class="text-green-500/20" stroke="currentColor"
-          stroke-width="8" stroke-linecap="round" stroke-linejoin="round" />
-       </svg>
+    <div class="card p-5 relative" [attr.aria-busy]="loading()">
+      <!-- Éxito -->
+      <div *ngIf="sent(); else formTpl" class="text-center space-y-4" aria-live="polite">
+        <div class="check-wrap"><div class="check">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none">
+            <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div></div>
+        <h3 class="text-xl font-semibold">¡Mensaje enviado!</h3>
+        <p class="muted">He recibido tu correo correctamente. Te responderé en cuanto me sea posible.</p>
+        <button class="btn btn-brand" (click)="reset()">Enviar otro mensaje</button>
       </div>
-      <h3 class="text-xl font-semibold mb-1">¡Mensaje enviado!</h3>
-      <p class="text-neutral-300">
-        Te he enviado un correo de confirmación. Te responderé en cuanto pueda.
-      </p>
 
-      <button (click)="reset()" 
-        class="mt-6 inline-flex items-center gap-2 rounded bg-neutral-800 px-4 py-2 text-sm hover:bg-neutral-700">
-        Enviar otro mensaje
-      </button>
-     </div>
-    </section>
+      <!-- Formulario -->
+      <ng-template #formTpl>
+        <form class="space-y-4" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+          <div class="row">
+            <div>
+              <label class="block mb-1">Nombre</label>
+              <input class="input" type="text" formControlName="name" placeholder="Tu nombre" autocomplete="name">
+              <div class="err" *ngIf="touched('name')">Introduce tu nombre.</div>
+            </div>
+            <div>
+              <label class="block mb-1">Email</label>
+              <input class="input" type="email" formControlName="email" placeholder="tu@email.com" autocomplete="email">
+              <div class="err" *ngIf="touched('email')">Email no válido.</div>
+            </div>
+          </div>
+
+          <div>
+            <label class="block mb-1">Mensaje</label>
+            <textarea class="input ta" formControlName="message" placeholder="Cuéntame en qué puedo ayudarte"></textarea>
+            <div class="err" *ngIf="touched('message')">Escribe al menos 10 caracteres.</div>
+          </div>
+
+          <!-- Honeypot (anti-spam) -->
+          <div class="hp-wrap">
+            <label>Nickname <input type="text" formControlName="nickname" tabindex="-1" autocomplete="off"></label>
+          </div>
+
+          <div *ngIf="error()" class="err" aria-live="assertive">{{ error() }}</div>
+
+          <div class="flex flex-col sm:flex-row gap-3 sm:justify-end">
+            <button type="button" class="btn btn-ghost" (click)="reset()" [disabled]="loading()">Limpiar</button>
+            <button type="submit" class="btn btn-brand" [disabled]="loading() || form.invalid">
+              <span>{{ loading() ? 'Enviando…' : 'Enviar' }}</span>
+            </button>
+          </div>
+        </form>
+      </ng-template>
+    </div>
+  </section>
   `
 })
 export class Contact {
   private fb = inject(FormBuilder);
 
   loading = signal(false);
-  sent = signal(false);
-  error = signal(false);
+  sent    = signal(false);
+  error   = signal('');
 
   form = this.fb.group({
     name: ['', [Validators.required, Validators.minLength(2)]],
     email: ['', [Validators.required, Validators.email]],
-    message: ['', [Validators.required, Validators.minLength(10)]],
-    nickname: [''] // Honeypot (debería permanecer vacío)
+    message: ['', [Validators.required, Validators.minLength(10), Validators.maxLength(5000)]],
+    nickname: [''] // honeypot (debe ir vacío)
   });
 
+  touched(ctrl: 'name'|'email'|'message') {
+    const c = this.form.controls[ctrl];
+    return c.touched && c.invalid;
+  }
+
   async submit() {
-    this.sent.set(false); this.error.set(false);
-    if (this.form.invalid) return;
-    if (this.form.value.nickname) return; // Un spam bot rellenaría esto
+    this.error.set('');
+    if (this.form.invalid || this.loading()) {
+      // marca como tocados por si falta feedback visual
+      this.form.markAllAsTouched();
+      return;
+    }
+
+    // protección anti-autofill accidental en honeypot
+    if (this.form.value.nickname) {
+      console.warn('[contact] honeypot rellenado: se finge éxito.');
+      this.sent.set(true);
+      this.form.reset();
+      return;
+    }
 
     this.loading.set(true);
     try {
-      const res = await fetch('/api/contact', {
+      const res = await fetch('/contact', {   // si no usas rewrite, cambia a '/api/contact'
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(this.form.value)
+        cache: 'no-store',
+        body: JSON.stringify({
+          name: this.form.value.name,
+          email: this.form.value.email,
+          message: this.form.value.message,
+          nickname: this.form.value.nickname ?? ''
+        })
       });
-      if (!res.ok) throw new Error('Bad response');
+
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(e?.error || `Error HTTP ${res.status}`);
+      }
+
+      // opcional: comprobar estructura { ok:true }
+      const data = await res.json().catch(() => ({} as any));
+      if (data?.ok !== true) console.warn('[contact] respuesta sin ok:true', data);
+
       this.sent.set(true);
       this.form.reset();
-    } catch {
-      this.error.set(true);
+
+    } catch (e: any) {
+      console.error('[contact] submit failed', e);
+      this.error.set(e?.message || 'Error enviando el mensaje');
     } finally {
-      this.loading.set(false)
+      this.loading.set(false);
     }
   }
 
   reset() {
+    this.form.reset();
     this.sent.set(false);
-    this.error.set(false);
+    this.error.set('');
   }
 }
