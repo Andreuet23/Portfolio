@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     { "src": "api/**/*.js", "use": "@vercel/node" },
-    { "src": "dist/portfolio/browser/**", "use": "@vercel/static" }
+    { "src": "dist/portfolio/browser/index.html", "use": "@vercel/static" }
   ],
   "routes": [
     { "src": "/feed.xml", "dest": "/api/feed.js" },
