@@ -10,12 +10,12 @@
 
     { "src": "/posts", "dest": "/api/posts.js" },
 
+    { "src": "/(.*)", "dest": "/dist/portfolio/browser/index.html" },
     { "handle": "filesystem" },
 
     {
       "src": "/(.*)\\.(js|css|map|png|jpe?g|webp|gif|svg|ico|txt|json|woff2?)",
       "dest": "/dist/portfolio/browser/$1.$2"
-    },
-    { "src": "/(.*)", "dest": "/dist/portfolio/browser/index.html" }
+    }
   ]
 }
