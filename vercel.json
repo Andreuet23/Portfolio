@@ -9,6 +9,7 @@
     { "src": "^/auth/verify$", "dest": "/api/auth/verify.js" },
 
     { "src": "/posts", "dest": "/api/posts.js" },
+    { "src": "/:path*", "dest": "/index.html" },
 
     { "handle": "filesystem" },
     {
