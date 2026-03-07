@@ -1,7 +1,7 @@
 {
   "version": 2,
 
-  "routes": [
+  "rewrites": [
     { "src": "/feed.xml", "dest": "/api/feed.js" },
     { "src": "/api/(.*)", "dest": "/api/$1" },
     { "src": "^/contact$", "dest": "/api/contact.js" },
