@@ -1,7 +1,7 @@
 {
   "version": 2,
 
-  "rewrites": [
+  "routes": [
     { "src": "/feed.xml", "dest": "/api/feed.js" },
     { "src": "/api/(.*)", "dest": "/api/$1" },
     { "src": "^/contact$", "dest": "/api/contact.js" },
@@ -9,7 +9,6 @@
     { "src": "^/auth/verify$", "dest": "/api/auth/verify.js" },
 
     { "src": "/posts", "dest": "/api/posts.js" },
-    { "src": "/:path*", "dest": "/index.html" },
 
     { "handle": "filesystem" },
     {
