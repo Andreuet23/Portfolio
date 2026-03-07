@@ -109,7 +109,7 @@ export class Content {
     {
       title: 'MovieX - Buscador de películas',
       description:
-        'Aplicación web para buscar películas, ver detalles, trailers y las plataformas en las que está disponible.',
+        'Aplicación web de búsqueda de películas, ver detalles, trailers y las plataformas en las que está disponible.',
       cover: '/assets/projects/movieX.png',
       tags: ['JavaScript', 'HTML5', 'CSS'],
       demo: 'https://andreuet23.github.io/MovieX/',
