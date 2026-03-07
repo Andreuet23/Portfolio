@@ -1,9 +1,6 @@
 {
   "version": 2,
-  "builds": [
-    { "src": "api/**/*.js", "use": "@vercel/node" },
-    { "src": "dist/**", "use": "@vercel/static" }
-  ],
+
   "routes": [
     { "src": "/feed.xml", "dest": "/api/feed.js" },
     { "src": "/api/(.*)", "dest": "/api/$1" },
@@ -13,6 +10,7 @@
 
     { "src": "/posts", "dest": "/api/posts.js" },
 
+    { "handle": "filesystem" },
     {
       "src": "/(.*)\\.(js|css|map|png|jpe?g|webp|gif|svg|ico|txt|json|woff2?)",
       "dest": "/dist/portfolio/browser/$1.$2"
