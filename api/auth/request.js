@@ -1,6 +1,7 @@
 // api/auth/request.js
 import { kv } from '@vercel/kv';
 import { Resend } from 'resend';
+import crypto from 'crypto';
 
 function kvReady() {
   return !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
@@ -26,7 +27,8 @@ function ipFromReq(req) {
 }
 
 function genCode() {
-  return (Math.floor(100000 + Math.random() * 900000)).toString();
+  // Generador criptográficamente seguro (Math.random no lo es)
+  return crypto.randomInt(100000, 1000000).toString();
 }
 
 export default async function handler(req, res) {
@@ -39,10 +41,9 @@ export default async function handler(req, res) {
     // Comprobación de entorno con detalle
     const miss = missingEnv();
     if (miss.length) {
-      return res.status(500).json({
-        error: 'Server misconfigured',
-        detail: `Missing env: ${miss.join(', ')}`
-      });
+      // El detalle va al log del servidor, no al cliente
+      console.error('[auth/request] missing env', miss.join(', '));
+      return res.status(500).json({ error: 'Server misconfigured' });
     }
     if (!kvReady()) {
       return res.status(500).json({ error: 'KV not configured properly' });
@@ -62,6 +63,7 @@ export default async function handler(req, res) {
     // Generar y guardar el código con TTL
     const code = genCode();
     await kv.set(`auth:code:${ADMIN_EMAIL}`, code, { ex: CODE_TTL_SECONDS });
+    await kv.del(`auth:attempts:${ADMIN_EMAIL}`); // código nuevo, contador de intentos a cero
 
     // Enviar email con Resend
     try {
@@ -85,11 +87,11 @@ export default async function handler(req, res) {
       // Devuelve detalle del error de Resend para diagnosticar remitente/domino
       const msg = e?.message || e?.toString?.() || 'Resend send failed';
       console.error('[auth/request] resend error', msg);
-      return res.status(500).json({ error: 'Send failed', detail: msg });
+      return res.status(500).json({ error: 'Send failed' });
     }
 
   } catch (err) {
     console.error('[auth/request] 500', err?.message || err);
-    return res.status(500).json({ error: 'Failed to send code', detail: err?.message || String(err) });
+    return res.status(500).json({ error: 'Failed to send code' });
   }
 }
