@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     { "src": "api/**/*.js", "use": "@vercel/node" },
-    { "src": "dist/**", "use": "@vercel/static" }
+    { "src": "dist/portfolio/browser/**", "use": "@vercel/static" }
   ],
   "routes": [
     { "src": "/feed.xml", "dest": "/api/feed.js" },
@@ -11,9 +11,12 @@
     { "src": "^/auth/request$", "dest": "/api/auth/request.js" },
     { "src": "^/auth/verify$", "dest": "/api/auth/verify.js" },
 
-    { "src": "/posts", "dest":"/api/posts.js" },
+    { "src": "/posts", "dest": "/api/posts.js" },
 
-    { "src": "/(.*)\\.(js|css|map|png|jpe?g|webp|gif|svg|ico|txt|json|woff2?)", "dest": "/dist/portfolio/browser/$1.$2" },
+    {
+      "src": "/(.*)\\.(js|css|map|png|jpe?g|webp|gif|svg|ico|txt|json|woff2?)",
+      "dest": "/dist/portfolio/browser/$1.$2"
+    },
     { "src": "/(.*)", "dest": "/dist/portfolio/browser/index.html" }
   ]
 }
